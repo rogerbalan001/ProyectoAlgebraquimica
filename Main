@@ -3,18 +3,21 @@ from tkinter import messagebox
 import sympy as sp
 
 # --- CONFIGURACIÓN DE COLORES MODERNOS Y LIMPIOS ---
-BG_COLOR = "#1E1E2E"        # Fondo oscuro suave (estilo editor de código moderno)
-PANEL_BG = "#282A36"        # Fondo de los paneles
-FG_TEXT = "#F8F8F2"         # Texto claro casi blanco
-FG_ACCENT = "#8BE9FD"       # Cian suave para títulos
-FG_SUCCESS = "#50FA7B"      # Verde claro y legible para resultados
-FG_ERROR = "#FF5555"        # Rojo suave para errores
+BG_COLOR = "#1E1E2E"        
+PANEL_BG = "#282A36"        
+FG_TEXT = "#F8F8F2"         
+FG_ACCENT = "#8BE9FD"       
+FG_SUCCESS = "#50FA7B"      
+FG_ERROR = "#FF5555"        
+BG_NOMBRES = "#6272A4"      # Color distinto para las casillas de texto
 
 FONT_TITLE = ("Segoe UI", 24, "bold")
 FONT_SUBTITLE = ("Segoe UI", 16, "bold")
 FONT_MAIN = ("Segoe UI", 14)
-FONT_EQ = ("Segoe UI", 20, "bold") # Fuente grande para la ecuación
+FONT_EQ = ("Segoe UI", 20, "bold") 
 
+# Valores por defecto
+NOMBRES_EJEMPLO = ["KOH", "H3PO4", "K3PO4", "H2O"]
 MATRIZ_EJEMPLO = [
     [1,  0, -3,  0],  # K
     [1,  4, -4, -1],  # O
@@ -28,7 +31,14 @@ def calcular_espacio_nulo():
     lbl_detalles.config(text="")
     
     try:
-        # 1. Leer valores
+        # 1. Leer los nombres de las moléculas
+        nombres = [entrada.get().strip() for entrada in entradas_nombres]
+        # Si el usuario deja un espacio en blanco, ponemos un texto genérico
+        for i in range(4):
+            if not nombres[i]:
+                nombres[i] = f"Molécula_{i+1}"
+
+        # 2. Leer valores de la matriz numérica
         valores = []
         for i in range(4):
             fila = []
@@ -37,7 +47,7 @@ def calcular_espacio_nulo():
                 fila.append(valor)
             valores.append(fila)
         
-        # 2. Crear matriz y calcular Kernel
+        # 3. Crear matriz y calcular Kernel
         A = sp.Matrix(valores)
         espacio_nulo = A.nullspace()
 
@@ -47,15 +57,15 @@ def calcular_espacio_nulo():
 
         vector_base = espacio_nulo[0]
 
-        # 3. MCM y coeficientes enteros
+        # 4. MCM y coeficientes enteros
         mcm = 1
         for valor in vector_base:
             mcm = sp.lcm(mcm, valor.q)
 
         coeficientes = vector_base * mcm
         
-        # 4. Mostrar Resultados de forma limpia y legible
-        ecuacion = f"{coeficientes[0]} (R1)  +  {coeficientes[1]} (R2)   ➔   {coeficientes[2]} (P1)  +  {coeficientes[3]} (P2)"
+        # 5. Mostrar la ecuación final usando los nombres personalizados
+        ecuacion = f"{coeficientes[0]} {nombres[0]}  +  {coeficientes[1]} {nombres[1]}   ➔   {coeficientes[2]} {nombres[2]}  +  {coeficientes[3]} {nombres[3]}"
         lbl_ecuacion.config(text=ecuacion, fg=FG_SUCCESS)
         
         detalles = (
@@ -66,7 +76,7 @@ def calcular_espacio_nulo():
         lbl_detalles.config(text=detalles, fg=FG_ACCENT)
 
     except ValueError:
-        lbl_ecuacion.config(text="ERROR: Ingrese solo números enteros.", fg=FG_ERROR)
+        lbl_ecuacion.config(text="ERROR: Ingrese solo números enteros en la matriz.", fg=FG_ERROR)
     except Exception as e:
         lbl_ecuacion.config(text=f"ERROR INESPERADO: {e}", fg=FG_ERROR)
 
@@ -95,32 +105,43 @@ btn_salir.place(relx=0.95, rely=0.5, anchor="e")
 main_frame = tk.Frame(root, bg=BG_COLOR)
 main_frame.pack(expand=True, fill=tk.BOTH, padx=60, pady=20)
 
-# PANEL IZQUIERDO: MATRIZ DE ENTRADA
+# PANEL IZQUIERDO: ENTRADAS
 panel_izq = tk.Frame(main_frame, bg=PANEL_BG, bd=0, highlightbackground="#44475A", highlightthickness=2)
 panel_izq.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=20, pady=20)
 
 lbl_matriz = tk.Label(panel_izq, text="Matriz de Composición Atómica", font=FONT_SUBTITLE, bg=PANEL_BG, fg=FG_ACCENT)
 lbl_matriz.pack(pady=(30, 10))
 
-lbl_instrucciones = tk.Label(panel_izq, text="Ingrese los átomos por cada molécula:", font=("Segoe UI", 11), bg=PANEL_BG, fg=FG_TEXT)
+lbl_instrucciones = tk.Label(panel_izq, text="Ingrese las moléculas arriba y sus respectivos átomos debajo:", font=("Segoe UI", 11), bg=PANEL_BG, fg=FG_TEXT)
 lbl_instrucciones.pack(pady=(0, 20))
 
-frame_matriz = tk.Frame(panel_izq, bg=PANEL_BG)
-frame_matriz.pack()
+frame_cuadricula = tk.Frame(panel_izq, bg=PANEL_BG)
+frame_cuadricula.pack()
 
-# Cuadrícula de 4x4
+# --- FILA SUPERIOR: CASILLAS PARA LOS NOMBRES ---
+entradas_nombres = []
+for j in range(4):
+    ent_nombre = tk.Entry(frame_cuadricula, width=8, font=("Segoe UI", 14, "bold"), justify="center", 
+                          bg=BG_NOMBRES, fg="#F8F8F2", insertbackground="#F8F8F2", relief="flat")
+    # Lo colocamos en la fila 0 y le damos margen inferior para separarlo de los números
+    ent_nombre.grid(row=0, column=j, padx=8, pady=(0, 15)) 
+    ent_nombre.insert(0, NOMBRES_EJEMPLO[j])
+    entradas_nombres.append(ent_nombre)
+
+# --- FILAS INFERIORES: LA MATRIZ NUMÉRICA ---
 entradas_matriz = []
 for i in range(4):
     fila_entradas = []
     for j in range(4):
-        entrada = tk.Entry(frame_matriz, width=5, font=("Segoe UI", 20), justify="center", 
+        entrada = tk.Entry(frame_cuadricula, width=5, font=("Segoe UI", 20), justify="center", 
                            bg="#44475A", fg=FG_TEXT, insertbackground=FG_TEXT, relief="flat")
-        entrada.grid(row=i, column=j, padx=8, pady=8)
+        # Las empezamos a ubicar desde la fila 1 en adelante
+        entrada.grid(row=i+1, column=j, padx=8, pady=8)
         entrada.insert(0, str(MATRIZ_EJEMPLO[i][j]))
         fila_entradas.append(entrada)
     entradas_matriz.append(fila_entradas)
 
-btn_calcular = tk.Button(panel_izq, text="Calcular Balanceo", font=FONT_SUBTITLE, bg="#6272A4", fg="white", 
+btn_calcular = tk.Button(panel_izq, text="Calcular Balanceo", font=FONT_SUBTITLE, bg="#50FA7B", fg="#282A36", 
                          relief="flat", padx=20, pady=10, command=calcular_espacio_nulo)
 btn_calcular.pack(pady=40)
 
